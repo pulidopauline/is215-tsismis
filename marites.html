@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tsismis Generator para sa mga Marites</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bungee+Spice&display=swap" rel="stylesheet">
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1622.0.min.js"></script>
+    <style>
+        html, body, .container, .row {
+            height: 100%;
+        }
+        .full-height {
+            min-height: 100%;
+        }
+        .container, .custom-file-input, .custom-file {
+            padding: 50px 0;
+            max-width: 1300px;
+        }
+        .col {
+            max-width: 600px;
+        }
+        .bungee-spice-regular {
+            font-family: "Bungee Spice", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+            padding-bottom: 50px;
+        }
+        button#upload-button {
+            font-weight: bold;
+            width: 100%;
+            padding: 20px 10px;
+            font-size: 20px;
+        }
+        #maritesPic {
+            max-width: 585px;
+            margin-top: 50px;
+        }
+        .collapsing {
+            transition: height 0.5s ease;
+        }
+        div#uploaded-image-container, div#uploaded-image-container img {
+            max-width: 100%;
+        }
+        div#myDiv, div#myDiv button {
+            width: 100%;
+            margin-top: 10px;
+        }
+        div#article {
+            border: 5px dotted;
+            padding: 20px;
+            border-radius: 20px;
+            border-color: darkorange;
+            margin-bottom: 50px;
+            min-height: 100px;
+        }
+        .loader {
+            border: 16px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 16px solid darkorange;
+            width: 50px;
+            height: 50px;
+            -webkit-animation: spin 2s linear infinite; /* Safari */
+            animation: spin 2s linear infinite;
+            position: absolute;
+            left: 45%;
+            top: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col full-height col1">
+                <h1 class="bungee-spice-regular">Tsismis Generator<br />para sa mga Marites</h1>
+        
+                <div class="custom-file">
+                    <input type="file" class="custom-file-input" id="file-chooser">
+                    <label class="custom-file-label" for="file-chooser">Upload mo na ang picture! Click mo to >>> </label>
+                </div>
+                    
+                <button id="upload-button" class="btn btn-warning mt-2">Gumawa ng Tsismis</button>            
+
+                <img src="marites.jpg" id="maritesPic" />
+
+                <div id="myDiv" style="display: none;">
+                    <button class="btn btn-dark" type="button" data-toggle="collapse" data-target="#collapseExample">
+                        Basehan ng tsismis
+                    </button>
+                </div>
+
+
+                <div class="collapse" id="collapseExample">
+                    <div class="card card-body" id="results">
+                        Upload ka muna ng picture, excited ka?
+                    </div>
+                </div>
+        
+            </div>
+            <div class="col">
+                
+        
+                <div id="uploaded-image-container" style="display: none;">
+                    <img id="uploaded-image" src="#" alt="Uploaded Image" class="img-fluid">
+                </div>
+                
+                <div id="article" class="mt-3" style="display: none; position: relative;">
+                    <div class="loader"></div>
+                </div>
+                             
+
+                <script type="text/javascript">            
+                    AWS.config.update({
+                        // put credentials here
+                    });
+                    var bucket = new AWS.S3({params: {Bucket: 'pmpulido-is215'}});
+                    var rekognition = new AWS.Rekognition({region: 'us-east-1'});
+                    var fileChooser = document.getElementById('file-chooser');
+                    var button = document.getElementById('upload-button');
+                    var results = document.getElementById('results');
+                    var uploadedImage = document.getElementById('uploaded-image');
+            
+                    button.addEventListener('click', function() {
+                        var file = fileChooser.files[0];
+            
+                        if (file) {
+                            results.innerHTML = '';
+                            var params = {Key: file.name, ContentType: file.type, Body: file};
+                            bucket.upload(params, function (err, data) {
+                                if (!err) {
+                                    uploadedImage.style.display = "block";
+                                    uploadedImage.src = URL.createObjectURL(file);
+            
+                                    var params = {
+                                        Image: {
+                                            S3Object: {
+                                                Bucket: 'pmpulido-is215',
+                                                Name: file.name
+                                            }
+                                        },
+                                        Attributes: ['ALL']
+                                    };
+                                    rekognition.detectFaces(params, function(err, data) {
+                                        if (err) {
+                                            results.innerHTML = 'Error detecting faces: ' + err;
+                                        } else {
+                                            results.innerHTML = 'Detected faces: ' + JSON.stringify(data.FaceDetails);
+                                            document.getElementById('uploaded-image-container').style.display = "block"; 
+                                            document.getElementById('myDiv').style.display = "block";
+                                            document.getElementById('article').style.display = "block"; 
+                                            document.getElementById('article').innerHTML = "<div class='loader'></div>"
+            
+                                            // Call ChatGPT API
+                                            fetch('https://api.openai.com/v1/chat/completions', { 
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': 'Bearer' //put api key here 
+                                                },
+                                                body: JSON.stringify({
+                                                    model: "gpt-4o", 
+                                                    messages: [
+                                                        { role: "system", content: "You are an AI that writes creative articles based on facial analysis data." },
+                                                        { role: "user", content: `Detect the identity of this person based on facial analysis data:\n\n${JSON.stringify(data.FaceDetails)} and write a false classic Filipino gossip about the person, and don't include numerical figures. Write this in tagalog language, in a cheery tone.` }
+                                                    ]
+                                                })
+                                            })
+                                            .then(response => response.json())
+                                            .then(chatGPTData => {
+                                                document.getElementById('article').innerHTML = chatGPTData.choices[0].message.content;
+                                            })
+                                            .catch(error => {
+                                                console.error('Error calling ChatGPT API:', error);
+                                                results.innerHTML += '<br>Error generating article.';
+                                            });
+                                        }
+                                    });
+                                } else {
+                                    results.innerHTML = 'ERROR!';
+                                }
+                            });
+                        } else {
+                            results.innerHTML = 'Nothing to upload.';
+                        }
+                    }, false);
+                </script>
+            </div>
+        </div>
+    </div>    
+</body>
+</html>
